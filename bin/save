@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# tmux-resurrect 의 post-save-all 훅. pane ID(%12)는 tmux 를 다시 켜면 바뀌므로,
+# 지금 Claude Code 가 살아 있는 pane 만 골라 resurrect 가 되살리는 위치(세션:창.pane)로 바꿔 적는다.
+# 칸 구분은 \037 이다. 탭은 IFS 공백이라 read 가 빈 칸을 건너뛰어 뒤 칸이 당겨진다.
+set -u
+
+state="${XDG_STATE_HOME:-$HOME/.local/state}/claude-tmux-resume"
+panes="$state/panes"
+mkdir -p "$panes"
+
+field() { sed -n "s/^$1=//p" "$2"; }
+
+tmp=$(mktemp "$state/saved.XXXXXX")
+tmux list-panes -a -F '#{pane_id}	#{session_name}:#{window_index}.#{pane_index}	#{pane_pid}' |
+  while IFS=$'\t' read -r pane_id target pane_pid; do
+    rec="$panes/${pane_id#%}"
+    [ -f "$rec" ] || continue
+    pid=$(field pid "$rec")
+    # 기록 뒤에 claude 를 끄고 다른 걸 띄웠으면 그 pane 은 되살리지 않는다
+    [ "$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')" = "$pane_pid" ] || continue
+    printf '%s\037%s\037%s\037%s\037%s\n' "$target" "$(field config_dir "$rec")" \
+      "$(field cwd "$rec")" "$(field session_id "$rec")" "$(field args "$rec")"
+  done >"$tmp"
+mv "$tmp" "$state/saved"
+
+# 사라진 pane 의 기록은 지운다. pane ID 는 재사용되므로 남겨 두면 엉뚱한 pane 에 붙는다.
+live=$(tmux list-panes -a -F '#{pane_id}' | tr -d '%')
+for rec in "$panes"/*; do
+  [ -f "$rec" ] || continue
+  printf '%s\n' "$live" | grep -qx "$(basename "$rec")" || rm -f "$rec"
+done

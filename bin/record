@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# SessionStart 훅. 이 tmux pane 에서 도는 Claude Code 의 세션 ID 와 실행 인자를 적어 둔다.
+# /clear·/resume 으로 세션이 바뀔 때도 다시 불려 최신 ID 로 덮어쓴다.
+set -u
+
+[ -n "${TMUX_PANE:-}" ] || exit 0
+
+input=$(cat)
+json_field() {
+  printf '%s' "$input" | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p"
+}
+session_id=$(json_field session_id)
+cwd=$(json_field cwd)
+[ -n "$session_id" ] || exit 0
+
+pane_pid=$(tmux display -p -t "$TMUX_PANE" '#{pane_pid}' 2>/dev/null) || exit 0
+
+# 훅 프로세스에서 위로 올라가 pane 셸의 직계 자식을 찾는다. 그게 claude 본체다.
+pid=$$
+while :; do
+  ppid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+  [ -n "$ppid" ] && [ "$ppid" -gt 1 ] || exit 0
+  [ "$ppid" = "$pane_pid" ] && break
+  pid=$ppid
+done
+
+dir="${XDG_STATE_HOME:-$HOME/.local/state}/claude-tmux-resume/panes"
+mkdir -p "$dir"
+{
+  printf 'pid=%s\n' "$pid"
+  printf 'config_dir=%s\n' "${CLAUDE_CONFIG_DIR:-}"
+  printf 'cwd=%s\n' "${cwd:-$PWD}"
+  printf 'session_id=%s\n' "$session_id"
+  printf 'args=%s\n' "$(ps -o args= -p "$pid")"
+} >"$dir/${TMUX_PANE#%}"

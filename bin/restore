@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# tmux-resurrect 의 post-restore-all 훅. 저장해 둔 pane 마다 같은 인자로 claude --resume 을 띄운다.
+set -u
+set -f # 인자에 든 * 같은 글자가 파일 이름으로 펼쳐지지 않게
+
+saved="${XDG_STATE_HOME:-$HOME/.local/state}/claude-tmux-resume/saved"
+[ -f "$saved" ] || exit 0
+
+# 처음 실행할 때 준 인자 중 세션 지정과 프롬프트는 빼고 나머지(권한·플러그인·MCP 설정 등)만 남긴다.
+# ps 로 읽은 인자라 공백이 든 값은 쪼개진다.
+resume_args() {
+  local -a in=($1) out=()
+  local i=1 n=${#in[@]} t
+  while [ "$i" -lt "$n" ]; do
+    t=${in[$i]}
+    case "$t" in
+      --continue | -c | --fork-session | --print | -p) ;;
+      --resume | -r | --session-id)
+        [ $((i + 1)) -lt "$n" ] && [ "${in[$((i + 1))]#-}" = "${in[$((i + 1))]}" ] && i=$((i + 1)) ;;
+      --*=*) out+=("$t") ;;
+      --dangerously-skip-permissions | --allow-dangerously-skip-permissions | --verbose | --ide | \
+        --strict-mcp-config | --debug | -d) out+=("$t") ;;
+      -*)
+        out+=("$t")
+        if [ $((i + 1)) -lt "$n" ] && [ "${in[$((i + 1))]#-}" = "${in[$((i + 1))]}" ]; then
+          i=$((i + 1))
+          out+=("${in[$i]}")
+        fi
+        ;;
+      *) ;; # 위치 인자는 첫 프롬프트다. 다시 넣으면 복원하자마자 또 보낸다.
+    esac
+    i=$((i + 1))
+  done
+  [ "${#out[@]}" -gt 0 ] && printf ' %q' "${out[@]}"
+}
+
+while IFS=$'\037' read -r target config_dir cwd session_id args; do
+  tmux display -p -t "$target" "" >/dev/null 2>&1 || continue
+  # 셸이 아닌 게 이미 떠 있으면 건드리지 않는다
+  case "$(tmux display -p -t "$target" '#{pane_current_command}')" in
+    zsh | bash | fish | sh | -zsh | -bash) ;;
+    *) continue ;;
+  esac
+
+  bin=${args%% *}
+  [ "${bin#/}" = "$bin" ] && bin="command $bin" || bin=$(printf '%q' "$bin")
+  cmd="cd $(printf '%q' "$cwd") && "
+  [ -n "$config_dir" ] && cmd+="CLAUDE_CONFIG_DIR=$(printf '%q' "$config_dir") "
+  cmd+="$bin$(resume_args "$args") --resume $(printf '%q' "$session_id")"
+  tmux send-keys -t "$target" "$cmd" Enter
+done <"$saved"

@@ -1,0 +1,5 @@
+{
+  "name": "tmux-resume",
+  "description": "tmux-resurrect 로 tmux 를 되살릴 때 pane 마다 돌던 Claude Code 세션도 --resume 으로 이어 띄운다",
+  "version": "0.1.0"
+}
