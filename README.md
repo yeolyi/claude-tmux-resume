@@ -20,14 +20,17 @@ Claude Code에서 플러그인을 설치합니다.
 /plugin install tmux-resume --marketplace yeolyi/claude-tmux-resume
 ```
 
-`tmux.conf`에 훅 두 줄을 추가합니다. 경로는 플러그인이 처음 실행될 때 만들어집니다.
+[tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect)와 [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum)이 필요합니다. `tmux.conf`에 아래를 추가합니다. 훅 경로는 플러그인이 처음 실행될 때 만들어집니다.
 
 ```tmux
+set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @plugin 'tmux-plugins/tmux-continuum'
+set -g @continuum-restore 'on'
 set -g @resurrect-hook-post-save-all '~/.local/state/claude-tmux-resume/bin/save'
 set -g @resurrect-hook-post-restore-all '~/.local/state/claude-tmux-resume/bin/restore'
 ```
 
-[tmux-continuum](https://github.com/tmux-plugins/tmux-continuum)에 `@continuum-restore 'on'`을 켜 두면 저장과 복원이 자동으로 이뤄집니다.
+15분마다 자동으로 저장되고, 재부팅 후 tmux를 켜면 자동으로 복원됩니다.
 
 ## 동작
 
@@ -39,7 +42,7 @@ set -g @resurrect-hook-post-restore-all '~/.local/state/claude-tmux-resume/bin/r
 
 - 대화만 복원됩니다. 세션이 띄운 백그라운드 작업은 복원되지 않습니다.
 - 실행 인자를 `ps`로 읽기 때문에 공백이 든 값은 쪼개집니다.
-- 마지막 저장 이후에 연 pane은 복원되지 않습니다.
+- 마지막 자동 저장(15분 간격) 이후에 연 pane은 복원되지 않습니다.
 
 ## 라이선스
 
