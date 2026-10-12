@@ -1,29 +1,47 @@
+<div align="center">
+
 # claude-tmux-resume
 
-tmux-resurrect로 tmux를 되살릴 때, pane마다 돌던 Claude Code 세션도 `--resume`으로 이어 띄운다.
+Bring your Claude Code sessions back after a reboot.
 
-## 설치
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Claude Code plugin](https://img.shields.io/badge/Claude_Code-plugin-d97757.svg)](https://docs.claude.com/en/docs/claude-code/plugins)
+[![tmux-resurrect](https://img.shields.io/badge/works_with-tmux--resurrect-1bb91f.svg)](https://github.com/tmux-plugins/tmux-resurrect)
 
-1. [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect)를 쓰고 있어야 한다. 자동 저장·복원은 [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum)을 쓰면 된다.
-2. 이 저장소를 받아 Claude Code를 띄울 때 플러그인으로 넘긴다.
-   ```sh
-   git clone <이 저장소> ~/Developer/claude-tmux-resume
-   claude --plugin-dir ~/Developer/claude-tmux-resume
-   ```
-3. `tmux.conf`에 resurrect 훅 두 줄을 추가한다.
-   ```tmux
-   set -g @resurrect-hook-post-save-all '$HOME/Developer/claude-tmux-resume/bin/save'
-   set -g @resurrect-hook-post-restore-all '$HOME/Developer/claude-tmux-resume/bin/restore'
-   ```
+</div>
 
-## 동작
+[tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) restores your windows and panes, but each pane comes back as an empty shell. This plugin remembers which Claude Code session was running in each pane and runs `claude --resume <id>` there on restore.
 
-- `SessionStart` 훅이 pane별 세션 ID, `CLAUDE_CONFIG_DIR`, 실행 인자를 `~/.local/state/claude-tmux-resume`에 적는다.
-- resurrect가 저장할 때 이 기록을 `세션:창.pane` 위치 기준으로 옮겨 적는다.
-- 복원할 때는 같은 인자로 `claude --resume <id>`를 입력한다. 첫 프롬프트, `--continue`, `-p`는 빼고 넘긴다.
+## Install
 
-## 한계
+Clone it and load it as a plugin:
 
-- 대화만 이어진다. 세션이 띄운 백그라운드 작업은 되살아나지 않는다.
-- 실행 인자는 `ps`로 읽기 때문에, 공백이 든 값은 쪼개진다.
-- 마지막 저장 이후에 새로 연 pane은 복원되지 않는다.
+```sh
+git clone https://github.com/yeolyi/claude-tmux-resume ~/claude-tmux-resume
+claude --plugin-dir ~/claude-tmux-resume
+```
+
+Add two hooks to `tmux.conf`:
+
+```tmux
+set -g @resurrect-hook-post-save-all '$HOME/claude-tmux-resume/bin/save'
+set -g @resurrect-hook-post-restore-all '$HOME/claude-tmux-resume/bin/restore'
+```
+
+[tmux-continuum](https://github.com/tmux-plugins/tmux-continuum) with `@continuum-restore 'on'` makes the whole thing automatic.
+
+## How it works
+
+- `SessionStart` hook records the session ID, `CLAUDE_CONFIG_DIR` and launch flags per pane, including after `/clear` and `/resume`
+- On save, records are keyed by `session:window.pane`, since pane IDs change across tmux restarts
+- On restore, each pane gets the same flags plus `--resume <id>`, without the initial prompt or `-c`/`-p`
+
+## Limitations
+
+- Only the conversation comes back. Background tasks started by the session don't.
+- Flags are read from `ps`, so values containing spaces get split.
+- Panes opened after the last save are not restored.
+
+## License
+
+MIT
