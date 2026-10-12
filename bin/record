@@ -24,8 +24,13 @@ while :; do
   pid=$ppid
 done
 
-dir="${XDG_STATE_HOME:-$HOME/.local/state}/claude-tmux-resume/panes"
+state="${XDG_STATE_HOME:-$HOME/.local/state}/claude-tmux-resume"
+dir="$state/panes"
 mkdir -p "$dir"
+
+# 마켓플레이스로 설치하면 플러그인 경로에 버전이 들어가 업데이트마다 바뀐다.
+# tmux.conf 가 고정 경로로 save·restore 를 부를 수 있게 지금 경로를 링크해 둔다.
+ln -sfn "$(cd "$(dirname "$0")" && pwd)" "$state/bin"
 {
   printf 'pid=%s\n' "$pid"
   printf 'config_dir=%s\n' "${CLAUDE_CONFIG_DIR:-}"

@@ -1,0 +1,16 @@
+{
+  "name": "yeolyi",
+  "owner": {
+    "name": "yeolyi"
+  },
+  "metadata": {
+    "description": "yeolyi's Claude Code plugins"
+  },
+  "plugins": [
+    {
+      "name": "tmux-resume",
+      "source": "./",
+      "description": "Resume Claude Code sessions in each tmux pane when tmux-resurrect restores"
+    }
+  ]
+}

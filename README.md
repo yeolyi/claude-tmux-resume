@@ -14,18 +14,17 @@
 
 ## 설치
 
-저장소를 받아 플러그인으로 불러옵니다.
+Claude Code에서 플러그인을 설치합니다.
 
-```sh
-git clone https://github.com/yeolyi/claude-tmux-resume ~/claude-tmux-resume
-claude --plugin-dir ~/claude-tmux-resume
+```
+/plugin install tmux-resume --marketplace yeolyi/claude-tmux-resume
 ```
 
-`tmux.conf`에 훅 두 줄을 추가합니다.
+`tmux.conf`에 훅 두 줄을 추가합니다. 경로는 플러그인이 처음 실행될 때 만들어집니다.
 
 ```tmux
-set -g @resurrect-hook-post-save-all '$HOME/claude-tmux-resume/bin/save'
-set -g @resurrect-hook-post-restore-all '$HOME/claude-tmux-resume/bin/restore'
+set -g @resurrect-hook-post-save-all '~/.local/state/claude-tmux-resume/bin/save'
+set -g @resurrect-hook-post-restore-all '~/.local/state/claude-tmux-resume/bin/restore'
 ```
 
 [tmux-continuum](https://github.com/tmux-plugins/tmux-continuum)에 `@continuum-restore 'on'`을 켜 두면 저장과 복원이 자동으로 이뤄집니다.

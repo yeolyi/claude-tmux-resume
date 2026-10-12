@@ -42,8 +42,13 @@ while IFS=$'\037' read -r target config_dir cwd session_id args; do
     *) continue ;;
   esac
 
+  # 실행 파일이 claude 로 보이면 그 경로를 그대로 쓰고, node 등 다른 게 보이면 PATH 의 claude 를 쓴다.
+  # command 를 붙이는 건 claude 를 셸 함수로 감싸 둔 환경에서도 실제 실행 파일을 부르기 위해서다.
   bin=${args%% *}
-  [ "${bin#/}" = "$bin" ] && bin="command $bin" || bin=$(printf '%q' "$bin")
+  case "$bin" in
+    /*/claude) bin=$(printf '%q' "$bin") ;;
+    *) bin="command claude" ;;
+  esac
   cmd="cd $(printf '%q' "$cwd") && "
   [ -n "$config_dir" ] && cmd+="CLAUDE_CONFIG_DIR=$(printf '%q' "$config_dir") "
   cmd+="$bin$(resume_args "$args") --resume $(printf '%q' "$session_id")"
